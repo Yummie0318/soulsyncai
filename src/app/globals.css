@@ -24,3 +24,78 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* --- Apple-style motion -------------------------------------------------- */
+
+@keyframes apple-card-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes apple-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes apple-logo-zoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.apple-motion-card {
+  animation: apple-card-pop 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.apple-motion-logo {
+  animation: apple-logo-zoom 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 80ms
+    forwards;
+}
+
+.apple-motion-text {
+  opacity: 0;
+  animation: apple-fade-up 550ms cubic-bezier(0.22, 0.61, 0.36, 1) 140ms
+    forwards;
+}
+
+.apple-motion-buttons {
+  opacity: 0;
+  animation: apple-fade-up 550ms cubic-bezier(0.22, 0.61, 0.36, 1) 230ms
+    forwards;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .apple-motion-card,
+  .apple-motion-logo,
+  .apple-motion-text,
+  .apple-motion-buttons {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
