@@ -4,6 +4,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "../../../hooks/useTranslation";
+import { fixAppHeight } from "../../app-height-fix";
+import { useEffect } from "react";
 
 const defaultTexts = {
   subtitle: "Let’s find your person.",
@@ -20,16 +22,22 @@ export default function WelcomePage() {
       ? defaultTexts
       : texts;
 
+      useEffect(() => {
+        fixAppHeight();
+      }, []);
+      
   if (loading) {
     // Skeleton: no real text, just shapes
     return (
       <main
-        className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
+      className="bg-[#f2f2f7] flex items-center justify-center px-4"
+      style={{
+        height: "var(--app-height)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+    
         <div className="w-full max-w-[430px]">
           <div
             className="

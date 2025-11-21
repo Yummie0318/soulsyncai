@@ -229,19 +229,17 @@ export default function JourneyPage() {
         return (
           <div className="space-y-2">
             {q.options?.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setSingleChoiceAnswer(opt.id)}
-                className={`w-full text-left rounded-2xl border px-4 py-3 text-[15px]
-                  ${
-                    singleChoiceAnswer === opt.id
-                      ? "border-[#007aff] bg-[#f0f6ff]"
-                      : "border-[#e5e5ea] bg-[#f9f9fb]"
-                  }`}
-              >
-                {opt.label}
-              </button>
+          // single_choice buttons
+        <button
+          className={`w-full text-left rounded-2xl border px-4 py-3 text-[15px] text-[#1c1c1e]
+            ${singleChoiceAnswer === opt.id
+              ? "border-[#007aff] bg-[#f0f6ff]"
+              : "border-[#e5e5ea] bg-[#f9f9fb]"
+            }`}
+        >
+          {opt.label}
+        </button>
+
             ))}
           </div>
         );
@@ -253,35 +251,36 @@ export default function JourneyPage() {
               const checked = multiChoiceAnswer.includes(opt.id);
               return (
                 <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() =>
-                    setMultiChoiceAnswer((prev) =>
-                      prev.includes(opt.id)
-                        ? prev.filter((i) => i !== opt.id)
-                        : [...prev, opt.id]
-                    )
-                  }
-                  className={`w-full rounded-2xl border px-4 py-3 text-[15px]
-                    flex items-center justify-between
+                key={opt.id}
+                type="button"
+                onClick={() =>
+                  setMultiChoiceAnswer((prev) =>
+                    prev.includes(opt.id)
+                      ? prev.filter((i) => i !== opt.id)
+                      : [...prev, opt.id]
+                  )
+                }
+                className={`w-full rounded-2xl border px-4 py-3 text-[15px] text-[#1c1c1e]
+                  flex items-center justify-between
+                  ${
+                    checked
+                      ? "border-[#007aff] bg-[#f0f6ff]"
+                      : "border-[#e5e5ea] bg-[#f9f9fb]"
+                  }`}
+              >
+                <span className="text-[#1c1c1e]">{opt.label}</span>
+              
+                <span
+                  className={`h-5 w-5 rounded-full flex items-center justify-center text-xs
                     ${
                       checked
-                        ? "border-[#007aff] bg-[#f0f6ff]"
-                        : "border-[#e5e5ea] bg-[#f9f9fb]"
+                        ? "bg-[#007aff] text-white"
+                        : "bg-white text-[#8e8e93] border border-[#d1d1d6]"
                     }`}
                 >
-                  <span>{opt.label}</span>
-                  <span
-                    className={`h-5 w-5 rounded-full flex items-center justify-center text-xs
-                      ${
-                        checked
-                          ? "bg-[#007aff] text-white"
-                          : "bg-white text-[#8e8e93] border border-[#d1d1d6]"
-                      }`}
-                  >
-                    ✓
-                  </span>
-                </button>
+                  ✓
+                </span>
+              </button>              
               );
             })}
           </div>

@@ -123,4 +123,5 @@ html, body {
 }
 input, textarea, select {
   font-size: 16px !important;
+  color: #1c1c1e; /* or #171717, up to you */
 }
