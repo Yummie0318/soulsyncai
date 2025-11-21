@@ -99,3 +99,19 @@ body {
     transform: none !important;
   }
 }
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* App height fix */
+:root {
+  --app-height: 100vh;
+}

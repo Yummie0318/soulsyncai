@@ -48,6 +48,19 @@ export default function JourneyPage() {
   const { texts, loading } = useTranslation(defaultTexts, "journeyPage");
   const safeTexts = texts?.skip ? texts : defaultTexts;
 
+  // 🔥 FIX HEIGHT ISSUES ON MOBILE
+  useEffect(() => {
+    const updateHeight = () => {
+      document.documentElement.style.setProperty(
+        "--app-height",
+        `${window.innerHeight}px`
+      );
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
   // User from localStorage
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -56,9 +69,8 @@ export default function JourneyPage() {
   const [browserLanguages, setBrowserLanguages] = useState<string[]>(["en"]);
 
   // Question state
-  const [currentQuestion, setCurrentQuestion] = useState<JourneyQuestion | null>(
-    null
-  );
+  const [currentQuestion, setCurrentQuestion] =
+    useState<JourneyQuestion | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +90,7 @@ export default function JourneyPage() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed?.email) setUserEmail(parsed.email);
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
   // Detect browser language
@@ -97,7 +107,6 @@ export default function JourneyPage() {
     setBrowserLanguages(langs);
   }, []);
 
-  // Reset answers
   function resetAnswerState() {
     setSingleChoiceAnswer(null);
     setMultiChoiceAnswer([]);
@@ -105,7 +114,6 @@ export default function JourneyPage() {
     setTextAnswer("");
   }
 
-  // Summaries for sending back
   function summarizeAnswer(q: JourneyQuestion): string {
     switch (q.type) {
       case "single_choice":
@@ -131,7 +139,6 @@ export default function JourneyPage() {
     }
   }
 
-  // Check if we have an answer
   function hasAnswer(q: JourneyQuestion | null): boolean {
     if (!q) return false;
     switch (q.type) {
@@ -149,7 +156,6 @@ export default function JourneyPage() {
     }
   }
 
-  // Fetch next question
   async function fetchNextQuestion(withAnswer: boolean) {
     if (!userEmail) {
       setError(safeTexts.noUser);
@@ -157,7 +163,7 @@ export default function JourneyPage() {
     }
 
     try {
-      setCurrentQuestion(null); // hide old question immediately
+      setCurrentQuestion(null);
       setLoadingQuestion(true);
       setError(null);
 
@@ -209,7 +215,6 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!userEmail || currentQuestion) return;
     fetchNextQuestion(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail]);
 
   // Render Input
@@ -323,7 +328,6 @@ export default function JourneyPage() {
     }
   }
 
-  // Skeleton UI
   const Skeleton = () => (
     <div className="w-full animate-pulse">
       <div className="h-4 w-40 bg-[#e5e5ea] rounded-full mb-2" />
@@ -333,29 +337,36 @@ export default function JourneyPage() {
   );
 
   if (loading) {
-    return <div className="p-10 text-center text-sm">{safeTexts.loadingJourney}</div>;
+    return (
+      <div className="p-10 text-center text-sm">
+        {safeTexts.loadingJourney}
+      </div>
+    );
   }
 
   return (
     <main
-      className="min-h-screen bg-[#f2f2f7] flex items-stretch justify-center px-4"
+      className="flex items-stretch justify-center px-4 bg-[#f2f2f7]"
       style={{
+        height: "var(--app-height)",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
+        overflow: "hidden",
       }}
     >
-      <div className="w-full max-w-[430px] flex">
+      <div className="w-full max-w-[430px] h-full flex">
         <div
           className="
-            flex flex-col flex-1
+            flex flex-col flex-1 h-full
             rounded-[32px] sm:rounded-[40px]
             bg-white
             border border-[#f1f1f4]
             shadow-[0_18px_40px_rgba(0,0,0,0.04)]
             px-5 py-6 sm:px-6 sm:py-8
+            overflow-hidden
           "
         >
-          {/* HEADER (compact, iPhone style) */}
+          {/* HEADER */}
           <header className="flex flex-col items-center text-center">
             <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#f5f5f7]">
               <Image
@@ -379,8 +390,8 @@ export default function JourneyPage() {
             )}
           </header>
 
-          {/* QUESTION AREA (flex-1, small internal scroll on overflow) */}
-          <section className="mt-4 flex-1 w-full overflow-y-auto pb-4">
+          {/* QUESTION AREA */}
+          <section className="mt-4 flex-1 w-full overflow-y-auto pb-4 no-scrollbar">
             {loadingQuestion && <Skeleton />}
 
             <AnimatePresence mode="wait">
@@ -436,7 +447,7 @@ export default function JourneyPage() {
             )}
           </section>
 
-          {/* BOTTOM BUTTONS (padded, big tap targets) */}
+          {/* BUTTONS */}
           <div className="mt-1 pt-2 border-t border-[#f2f2f7] flex flex-col gap-2">
             <button
               type="button"
@@ -449,7 +460,11 @@ export default function JourneyPage() {
                 hover:bg-[#f5f5f7]
                 active:bg-[#e5e5ea] active:scale-[0.97]
                 shadow-sm
-                ${loadingQuestion ? "opacity-60 cursor-not-allowed active:scale-100" : ""}
+                ${
+                  loadingQuestion
+                    ? "opacity-60 cursor-not-allowed active:scale-100"
+                    : ""
+                }
               `}
             >
               {safeTexts.skip}
@@ -458,7 +473,9 @@ export default function JourneyPage() {
             <button
               type="button"
               onClick={() => fetchNextQuestion(true)}
-              disabled={!currentQuestion || !hasAnswer(currentQuestion) || loadingQuestion}
+              disabled={
+                !currentQuestion || !hasAnswer(currentQuestion) || loadingQuestion
+              }
               className={`
                 w-full rounded-2xl bg-[#1c1c1e] py-3
                 text-[15px] sm:text-[16px] font-semibold text-white
@@ -466,7 +483,11 @@ export default function JourneyPage() {
                 hover:bg-[#2c2c2e]
                 active:bg-black active:scale-[0.97]
                 shadow-[0_8px_20px_rgba(0,0,0,0.18)]
-                ${!currentQuestion || loadingQuestion ? "opacity-60 cursor-not-allowed active:scale-100" : ""}
+                ${
+                  !currentQuestion || loadingQuestion
+                    ? "opacity-60 cursor-not-allowed active:scale-100"
+                    : ""
+                }
               `}
             >
               {loadingQuestion ? "…" : safeTexts.next}
