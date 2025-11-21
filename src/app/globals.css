@@ -112,6 +112,15 @@ html, body {
 }
 
 /* App height fix */
+/* Fix iOS Safari 100vh issue */
 :root {
   --app-height: 100vh;
+}
+
+html, body {
+  height: var(--app-height);
+  overflow: hidden;
+}
+input, textarea, select {
+  font-size: 16px !important;
 }

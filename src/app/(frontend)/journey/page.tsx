@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "../../../hooks/useTranslation";
+import { fixAppHeight } from "../../app-height-fix";
 
 // ---------- Types ----------
 type QuestionType =
@@ -47,6 +48,10 @@ const defaultTexts = {
 export default function JourneyPage() {
   const { texts, loading } = useTranslation(defaultTexts, "journeyPage");
   const safeTexts = texts?.skip ? texts : defaultTexts;
+
+  useEffect(() => {
+    fixAppHeight();
+  }, []);
 
   // 🔥 FIX HEIGHT ISSUES ON MOBILE
   useEffect(() => {
@@ -346,14 +351,14 @@ export default function JourneyPage() {
 
   return (
     <main
-      className="flex items-stretch justify-center px-4 bg-[#f2f2f7]"
-      style={{
-        height: "var(--app-height)",
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        overflow: "hidden",
-      }}
-    >
+    className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+    style={{
+      height: "var(--app-height)",
+      paddingTop: "env(safe-area-inset-top)",
+      paddingBottom: "env(safe-area-inset-bottom)"
+    }}
+  >
+  
       <div className="w-full max-w-[430px] h-full flex">
         <div
           className="

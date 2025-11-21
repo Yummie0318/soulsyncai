@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "../../../hooks/useTranslation";
+import { fixAppHeight } from "../../app-height-fix";
 
 const defaultTexts = {
   subtitle: "Let’s find your person.",
@@ -33,6 +34,10 @@ export default function OtpPage() {
     !texts || Object.keys(texts).length === 0 || !("instruction" in texts)
       ? defaultTexts
       : texts;
+
+      useEffect(() => {
+        fixAppHeight();
+      }, []);
 
   // Read email from localStorage (set in /forgot)
   useEffect(() => {
@@ -168,13 +173,16 @@ export default function OtpPage() {
   if (loading) {
     // Simple Apple-style skeleton
     return (
-      <main
-        className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
+   <main
+  className="bg-[#f2f2f7] flex items-center justify-center px-4"
+  style={{
+    height: "var(--app-height)",
+    paddingTop: "env(safe-area-inset-top)",
+    paddingBottom: "env(safe-area-inset-bottom)",
+    overflow: "hidden",
+  }}
+>
+
         <div className="w-full max-w-[430px]">
           <div
             className="
@@ -208,12 +216,15 @@ export default function OtpPage() {
   if (missingEmail) {
     return (
       <main
-        className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
+      className="bg-[#f2f2f7] flex items-center justify-center px-4"
+      style={{
+        height: "var(--app-height)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        overflow: "hidden",
+      }}
+    >
+    
         <div className="w-full max-w-[430px]">
           <div
             className="
@@ -272,12 +283,15 @@ export default function OtpPage() {
 
   return (
     <main
-      className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
-    >
+    className="bg-[#f2f2f7] flex items-center justify-center px-4"
+    style={{
+      height: "var(--app-height)",
+      paddingTop: "env(safe-area-inset-top)",
+      paddingBottom: "env(safe-area-inset-bottom)",
+      overflow: "hidden",
+    }}
+  >
+  
       <div className="w-full max-w-[430px]">
         <div
           className="

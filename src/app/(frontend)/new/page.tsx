@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "../../../hooks/useTranslation";
+import { fixAppHeight } from "../../app-height-fix";
 
 const defaultTexts = {
   subtitle: "Let’s find your person.",
@@ -42,6 +43,11 @@ export default function SignupPage() {
     !texts || Object.keys(texts).length === 0 || !("signupButton" in texts)
       ? defaultTexts
       : texts;
+
+      useEffect(() => {
+        fixAppHeight();
+      }, []);
+
 
   // detect browser locale once (optional)
   useEffect(() => {
@@ -120,13 +126,15 @@ export default function SignupPage() {
   if (loading) {
     // Apple-style skeleton while translations load
     return (
-      <main
-        className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
+     <main
+  className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+  style={{
+    height: "var(--app-height)",
+    paddingTop: "env(safe-area-inset-top)",
+    paddingBottom: "env(safe-area-inset-bottom)"
+  }}
+>
+
         <div className="w-full max-w-[430px]">
           <div
             className="
@@ -164,12 +172,13 @@ export default function SignupPage() {
 
   return (
     <main
-      className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
-    >
+    className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+    style={{
+      height: "var(--app-height)",
+      paddingTop: "env(safe-area-inset-top)",
+      paddingBottom: "env(safe-area-inset-bottom)"
+    }}
+  >  
       <div className="w-full max-w-[430px]">
         <div
           className="
