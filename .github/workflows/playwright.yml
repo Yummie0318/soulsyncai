@@ -22,9 +22,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests in src/app
+      - name: Run Jest tests in src/app
+        run: npx jest src/app
+
+      # 4️⃣ Install Playwright browsers & dependencies
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      # 5️⃣ List test files for debugging
+      - name: List all test files in ./tests/
         run: |
-          npx jest src/app
-        # Or, if using mocha:
-        # npx mocha "src/app/**/*.test.js"
-        # Or, if your test script is configured: npm test
+          echo "📜 Listing all test files in ./tests/"
+          find ./tests -name "*.spec.ts"
+
+      - name: Run Playwright tests
+        run: npx playwright test
