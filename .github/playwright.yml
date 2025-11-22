@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Adjust if needed
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests in src/app
+        run: |
+          npx jest src/app
+        # Or, if using mocha:
+        # npx mocha "src/app/**/*.test.js"
+        # Or, if your test script is configured: npm test
