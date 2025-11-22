@@ -1,6 +1,6 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect, Page } from '@playwright/test';
 
-test('WelcomePage renders logo, title, subtitle, and buttons', async ({ page }) => {
+test('WelcomePage renders logo, title, subtitle, and buttons', async ({ page }: { page: Page }) => {
   // Update this path if your WelcomePage is served at a different route
   await page.goto('/(frontend)/welcome');
 
