@@ -10,6 +10,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # 🔐 Inject GitHub Environment Variables (Secrets)
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}   # 👈 this one
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,20 +37,20 @@ jobs:
           echo "📜 Listing tests/ folder"
           ls -R ./tests
 
-      # 🏗 Build Next.js separately so errors are visible
+      # 🏗 Build Next.js separately (so errors show clearly)
       - name: Build Next.js app
         run: npm run build
 
-      # 🚀 Start Next.js (background)
+      # 🚀 Start Next.js in background
       - name: Start Next.js app
         run: npm start -- -p 3000 &
         env:
           PORT: 3000
 
-      # ⏳ Wait for the server
+      # ⏳ Wait until server is reachable
       - name: Wait for Next.js to be ready
         run: npx wait-on http://localhost:3000
 
-      # 🧪 Run tests
+      # 🧪 Run Playwright Tests
       - name: Run Playwright Tests
         run: npx playwright test
