@@ -30,16 +30,20 @@ jobs:
           echo "📜 Listing tests/ folder"
           ls -R ./tests
 
-      # ⬇️ Start Next.js server
+      # 🏗 Build Next.js separately so errors are visible
+      - name: Build Next.js app
+        run: npm run build
+
+      # 🚀 Start Next.js (background)
       - name: Start Next.js app
-        run: npm run build && npm start &
+        run: npm start -- -p 3000 &
         env:
           PORT: 3000
 
-      # ⬇️ Wait for the server to be ready
+      # ⏳ Wait for the server
       - name: Wait for Next.js to be ready
         run: npx wait-on http://localhost:3000
 
-      # ⬇️ Run Playwright tests AFTER server is running
+      # 🧪 Run tests
       - name: Run Playwright Tests
         run: npx playwright test

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Welcome Page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/welcome"); // Adjusts if your route is differents
+    await page.goto("/welcome"); // Adjust if your route is differents
   });
 
   test("should display logo", async ({ page }) => {
