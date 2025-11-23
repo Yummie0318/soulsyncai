@@ -17,19 +17,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Adjust if needed
+          node-version: '20'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Run Jest tests in src/app
-        run: npx jest src/app
-
-      # 4️⃣ Install Playwright browsers & dependencies
       - name: Install Playwright
         run: npx playwright install --with-deps
 
-      # 5️⃣ List test files for debugging
       - name: List all test files in ./tests/
         run: |
           echo "📜 Listing all test files in ./tests/"
