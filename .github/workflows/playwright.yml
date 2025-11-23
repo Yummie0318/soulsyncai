@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # 👇 VERY IMPORTANT! 
+    environment: production  
+
+    # 👇 Uses GitHub Environment Variable
+    env:
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ vars.OPENAI_API_KEY }}
+      RESEND_API_KEY: ${{ vars.RESEND_API_KEY }}
+      EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: List test files
+        run: |
+          echo "📜 Listing tests/ folder"
+          ls -R ./tests
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Start Next.js app
+        run: npm start -- -p 3000 &
+        env:
+          PORT: 3000
+
+      - name: Wait for Next.js to be ready
+        run: npx wait-on http://localhost:3000
+
+      - name: Run Playwright Tests
+        run: npx playwright test
