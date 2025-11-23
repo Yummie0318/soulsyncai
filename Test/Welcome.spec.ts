@@ -1,44 +1,44 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('SoulSync Welcome Page', () => {
-  // Optionally set up initial localStorage values
+test.describe("Welcome Page", () => {
   test.beforeEach(async ({ page }) => {
-    // Example: set a mock user session (customize as needed)
-    await page.addInitScript(() => {
-      localStorage.setItem('user_id', 'test-user');
-    });
+    await page.goto("/welcome"); // Adjust if your route is different
   });
 
-  test('should display logo, title, subtitle, and main buttons', async ({ page }) => {
-    // Visit your Welcome pages route (adjust if you use a full URL in CI)
-    await page.goto('http://localhost:3000/(frontend)/welcome');
-
-    // Logo
-    await expect(page.locator('img[alt="SoulSync Logo"]')).toBeVisible();
-
-    // Title
-    await expect(page.locator('h1')).toHaveText('SoulSync AI');
-
-    // Subtitle
-    await expect(page.getByText("Let’s find your person.")).toBeVisible();
-
-    // Buttons
-    await expect(page.getByRole('button', { name: 'Continue my journey' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Start a new journey' })).toBeVisible();
-
-    // Links
-    await expect(page.locator('a[href="/login"]')).toBeVisible();
-    await expect(page.locator('a[href="/new"]')).toBeVisible();
+  test("should display logo", async ({ page }) => {
+    const logo = page.locator('img[alt="SoulSync Logo"]');
+    await expect(logo).toBeVisible();
   });
 
-  // Example: Add API mocking or navigation tests if you want (like your island tests)
-  // If your WelcomePage responds to API or localStorage, you can customize below!
+  test("should show title 'SoulSync AI'", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "SoulSync AI" })).toBeVisible();
+  });
 
-  // test('should redirect to another page if certain localStorage key is missing', async ({ page }) => {
-  //   await page.addInitScript(() => {
-  //     localStorage.removeItem('user_id');
-  //   });
-  //   await page.goto('http://localhost:3000/(frontend)/welcome');
-  //   await expect(page).toHaveURL(/login/);
-  // });
+  test("should display subtitle", async ({ page }) => {
+    await expect(
+      page.locator("text=Let’s find your person.")
+    ).toBeVisible();
+  });
+
+  test("should have Continue my journey button", async ({ page }) => {
+    await expect(
+      page.getByRole("button", { name: "Continue my journey" })
+    ).toBeVisible();
+  });
+
+  test("should have Start a new journey button", async ({ page }) => {
+    await expect(
+      page.getByRole("button", { name: "Start a new journey" })
+    ).toBeVisible();
+  });
+
+  test("Continue button should navigate to /login", async ({ page }) => {
+    await page.getByRole("button", { name: "Continue my journey" }).click();
+    await expect(page).toHaveURL(/.*login/);
+  });
+
+  test("Start new journey button should navigate to /new", async ({ page }) => {
+    await page.getByRole("button", { name: "Start a new journey" }).click();
+    await expect(page).toHaveURL(/.*new/);
+  });
 });
