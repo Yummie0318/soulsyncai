@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # 👇 VERY IMPORTANT! 
-    environment: <YOUR_ENVIRONMENT_NAME>
+    environment: production  
 
     # 👇 Uses GitHub Environment Variable
     env:
