@@ -10,7 +10,7 @@ test.describe('SoulSync Welcome Page', () => {
   });
 
   test('should display logo, title, subtitle, and main buttons', async ({ page }) => {
-    // Visit your Welcome page route (adjust if you use a full URL in CI)
+    // Visit your Welcome pages route (adjust if you use a full URL in CI)
     await page.goto('http://localhost:3000/(frontend)/welcome');
 
     // Logo
