@@ -44,10 +44,9 @@ export default function SignupPage() {
       ? defaultTexts
       : texts;
 
-      useEffect(() => {
-        fixAppHeight();
-      }, []);
-
+  useEffect(() => {
+    fixAppHeight();
+  }, []);
 
   // detect browser locale once (optional)
   useEffect(() => {
@@ -124,40 +123,39 @@ export default function SignupPage() {
   };
 
   if (loading) {
-    // Apple-style skeleton while translations load
+    // Apple-style skeleton while translations load (more compact)
     return (
-     <main
-  className="flex items-center justify-center px-4 bg-[#f2f2f7]"
-  style={{
-    height: "var(--app-height)",
-    paddingTop: "env(safe-area-inset-top)",
-    paddingBottom: "env(safe-area-inset-bottom)"
-  }}
->
-
+      <main
+        className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+        style={{
+          height: "var(--app-height)",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
         <div className="w-full max-w-[430px]">
           <div
             className="
               flex flex-col items-center
-              rounded-[40px] bg-white
+              rounded-[32px] bg-white
               border border-[#f1f1f4]
-              shadow-[0_18px_40px_rgba(0,0,0,0.04)]
-              px-6 py-10 sm:px-8 sm:py-12
+              shadow-[0_16px_32px_rgba(0,0,0,0.04)]
+              px-5 py-8 sm:px-7 sm:py-9
               apple-motion-card
             "
           >
-            <div className="mb-6 flex h-24 w-24 rounded-full bg-[#f5f5f7] animate-pulse" />
-            <div className="w-full max-w-xs space-y-3 mt-4">
-              <div className="h-6 rounded-full bg-[#e5e5ea] animate-pulse" />
+            <div className="mb-4 flex h-16 w-16 rounded-full bg-[#f5f5f7] animate-pulse" />
+            <div className="w-full max-w-xs space-y-2.5 mt-2">
+              <div className="h-5 rounded-full bg-[#e5e5ea] animate-pulse" />
               <div className="h-4 rounded-full bg-[#e5e5ea] w-3/4 animate-pulse" />
               <div className="h-4 rounded-full bg-[#e5e5ea] w-2/3 animate-pulse" />
             </div>
-            <div className="mt-8 w-full space-y-4">
-              <div className="h-11 rounded-2xl bg-[#e5e5ea] animate-pulse" />
-              <div className="h-11 rounded-2xl bg-[#e5e5ea] animate-pulse" />
-              <div className="h-11 rounded-2xl bg-[#e5e5ea] animate-pulse" />
+            <div className="mt-6 w-full space-y-3">
+              <div className="h-10 rounded-2xl bg-[#e5e5ea] animate-pulse" />
+              <div className="h-10 rounded-2xl bg-[#e5e5ea] animate-pulse" />
+              <div className="h-10 rounded-2xl bg-[#e5e5ea] animate-pulse" />
             </div>
-            <div className="mt-8 h-11 w-full rounded-2xl bg-[#e5e5ea] animate-pulse" />
+            <div className="mt-6 h-10 w-full rounded-2xl bg-[#e5e5ea] animate-pulse" />
           </div>
         </div>
       </main>
@@ -167,67 +165,67 @@ export default function SignupPage() {
   const canSubmit =
     displayName.trim() &&
     email.trim() &&
-    password.trim().length >= 8 && // 🔐 also enforce here
+    password.trim().length >= 8 &&
     !submitting;
 
   return (
     <main
-    className="flex items-center justify-center px-4 bg-[#f2f2f7]"
-    style={{
-      height: "var(--app-height)",
-      paddingTop: "env(safe-area-inset-top)",
-      paddingBottom: "env(safe-area-inset-bottom)"
-    }}
-  >  
+      className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+      style={{
+        height: "var(--app-height)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <div className="w-full max-w-[430px]">
         <div
           className="
             flex flex-col items-center
-            rounded-[40px] bg-white
+            rounded-[32px] bg-white
             border border-[#f1f1f4]
-            shadow-[0_18px_40px_rgba(0,0,0,0.04)]
-            px-6 py-10 sm:px-8 sm:py-12
+            shadow-[0_16px_32px_rgba(0,0,0,0.04)]
+            px-5 py-8 sm:px-7 sm:py-9
             apple-motion-card
           "
         >
-          {/* Logo */}
+          {/* Logo + title block - more compact for mobile */}
           <header className="flex flex-col items-center text-center apple-motion-logo">
-            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[#f5f5f7]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f5f5f7]">
               <Image
                 src="/logo-removebg-preview.png"
                 alt="SoulSync Logo"
-                width={80}
-                height={80}
+                width={56}
+                height={56}
                 priority
                 className="object-contain"
               />
             </div>
 
             {/* Brand title (not translated) */}
-            <h1 className="text-[26px] sm:text-[28px] font-semibold tracking-tight text-[#3c3c43]">
+            <h1 className="text-[22px] sm:text-[24px] font-semibold tracking-tight text-[#3c3c43]">
               SoulSync AI
             </h1>
 
-            {/* Translated subtitle + description */}
-            <p className="mt-2 text-[15px] sm:text-[16px] text-[#8e8e93]">
+            {/* Subtitle + create-account text — reduced spacing */}
+            <p className="mt-1 text-[14px] sm:text-[15px] text-[#8e8e93]">
               {safeTexts.subtitle}
             </p>
 
-            <p className="mt-4 text-[14px] sm:text-[15px] text-[#8e8e93]">
+            <p className="mt-2 text-[13px] sm:text-[14px] text-[#8e8e93]">
               {safeTexts.createAccount}
             </p>
           </header>
 
           {/* Form */}
           <form
-            className="mt-8 w-full space-y-6 apple-motion-text"
+            className="mt-6 w-full space-y-5 apple-motion-text"
             onSubmit={handleSubmit}
           >
             {/* Display Name */}
             <div className="text-left">
               <label
                 htmlFor="name"
-                className="block text-[13px] font-medium text-[#8e8e93] mb-1"
+                className="block text-[12px] font-medium text-[#8e8e93] mb-1"
               >
                 {safeTexts.labelDisplayName}
               </label>
@@ -240,7 +238,7 @@ export default function SignupPage() {
                 className="
                   w-full rounded-2xl border border-[#e5e5ea]
                   bg-[#f9f9fb]
-                  px-4 py-3 text-[15px] text-[#1c1c1e]
+                  px-3.5 py-2.5 text-[14px] text-[#1c1c1e]
                   outline-none
                   focus:bg-white
                   focus:border-[#007aff]
@@ -255,7 +253,7 @@ export default function SignupPage() {
             <div className="text-left">
               <label
                 htmlFor="email"
-                className="block text-[13px] font-medium text-[#8e8e93] mb-1"
+                className="block text-[12px] font-medium text-[#8e8e93] mb-1"
               >
                 {safeTexts.labelEmail}
               </label>
@@ -268,7 +266,7 @@ export default function SignupPage() {
                 className="
                   w-full rounded-2xl border border-[#e5e5ea]
                   bg-[#f9f9fb]
-                  px-4 py-3 text-[15px] text-[#1c1c1e]
+                  px-3.5 py-2.5 text-[14px] text-[#1c1c1e]
                   outline-none
                   focus:bg-white
                   focus:border-[#007aff]
@@ -283,7 +281,7 @@ export default function SignupPage() {
             <div className="text-left">
               <label
                 htmlFor="password"
-                className="block text-[13px] font-medium text-[#8e8e93] mb-1"
+                className="block text-[12px] font-medium text-[#8e8e93] mb-1"
               >
                 {safeTexts.labelPassword}
               </label>
@@ -298,7 +296,7 @@ export default function SignupPage() {
                   className="
                     w-full rounded-2xl border border-[#e5e5ea]
                     bg-[#f9f9fb]
-                    px-4 pr-12 py-3 text-[15px] text-[#1c1c1e]
+                    px-3.5 pr-11 py-2.5 text-[14px] text-[#1c1c1e]
                     outline-none
                     focus:bg-white
                     focus:border-[#007aff]
@@ -313,49 +311,49 @@ export default function SignupPage() {
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="
-                    absolute inset-y-0 right-4 flex items-center
+                    absolute inset-y-0 right-3 flex items-center
                     text-[#8e8e93] hover:text-[#007aff] transition
                   "
                 >
                   {showPassword ? (
-                    <EyeOff size={22} strokeWidth={1.7} />
+                    <EyeOff size={20} strokeWidth={1.7} />
                   ) : (
-                    <Eye size={22} strokeWidth={1.7} />
+                    <Eye size={20} strokeWidth={1.7} />
                   )}
                 </button>
               </div>
 
               {/* Small helper text under password */}
-              <p className="mt-1 text-[12px] text-[#8e8e93]">
+              <p className="mt-1 text-[11px] text-[#8e8e93]">
                 Password must be at least 8 characters.
               </p>
             </div>
 
             {/* Error / info (Apple-style) */}
             {error && (
-              <p className="text-[13px] text-[#ff3b30] text-center mt-1">
+              <p className="text-[12px] text-[#ff3b30] text-center mt-1">
                 {error}
               </p>
             )}
             {!error && info && (
-              <p className="text-[13px] text-[#34c759] text-center mt-1">
+              <p className="text-[12px] text-[#34c759] text-center mt-1">
                 {info}
               </p>
             )}
 
             {/* Signup Button */}
-            <div className="pt-2 apple-motion-buttons">
+            <div className="pt-1 apple-motion-buttons">
               <button
                 type="submit"
                 disabled={!canSubmit}
                 className={`
                   w-full rounded-2xl
                   bg-[#1c1c1e]
-                  py-3.5 text-[16px] font-semibold text-white
+                  py-3 text-[15px] font-semibold text-white
                   tracking-tight transition
                   hover:bg-[#2c2c2e]
                   active:bg-black active:scale-[0.97]
-                  shadow-[0_8px_20px_rgba(0,0,0,0.18)]
+                  shadow-[0_7px_18px_rgba(0,0,0,0.18)]
                   ${
                     !canSubmit
                       ? "opacity-60 cursor-not-allowed active:scale-100"
@@ -369,7 +367,7 @@ export default function SignupPage() {
           </form>
 
           {/* Already have an account? */}
-          <p className="mt-6 text-[14px] text-[#8e8e93] apple-motion-text">
+          <p className="mt-5 text-[13px] text-[#8e8e93] apple-motion-text">
             {safeTexts.alreadyAccount}{" "}
             <Link href="/login" className="text-[#007aff] font-medium">
               {safeTexts.login}

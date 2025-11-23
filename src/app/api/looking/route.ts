@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Optionally enforce a minimum length
-    if (trimmedText.length < 20) {
+    if (trimmedText.length < 3) {
       return NextResponse.json(
         { error: "Please provide a bit more detail." },
         { status: 400 }

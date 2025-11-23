@@ -98,6 +98,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // NEW: store the *latest* answer into journey_answers (if there is one)
+    // --------------------------------------------------------------------
+    if (Array.isArray(history) && history.length > 0) {
+      const last = history[history.length - 1];
+
+      if (last?.questionId && last?.question && last?.answerSummary) {
+        try {
+          await query(
+            `
+            INSERT INTO journey_answers (user_id, question_id, question, answer)
+            VALUES ($1, $2, $3, $4)
+          `,
+            [user.id, last.questionId, last.question, last.answerSummary]
+          );
+        } catch (err) {
+          console.error(
+            "[/api/journey] Failed to insert into journey_answers:",
+            err
+          );
+          // We don't fail the whole request – user journey must continue
+        }
+      }
+    }
+    // --------------------------------------------------------------------
+
     const lookingFor = (user.looking_for_text || "").trim();
     if (!lookingFor) {
       return NextResponse.json(
@@ -111,6 +136,54 @@ export async function POST(req: NextRequest) {
       console.warn("/api/journey → OPENAI_API_KEY missing");
       return NextResponse.json({ ok: true, question: fallbackQuestion() });
     }
+
+    // OPTIONAL (RECOMMENDED): update user_embeddings from full profile
+    // This will be used later by /api/match to find best matches.
+    // ----------------------------------------------------------------
+    try {
+      // Only start embedding when we have at least a few answers
+      if (history.length >= 3) {
+        const profileLines: string[] = [];
+
+        profileLines.push(`Looking for: ${lookingFor}`);
+        profileLines.push("");
+        profileLines.push("Journey Q&A:");
+
+        history.forEach((h, idx) => {
+          profileLines.push(
+            `Q${idx + 1}: ${h.question}\nA${idx + 1}: ${h.answerSummary}`
+          );
+        });
+
+        const profileText = profileLines.join("\n");
+
+        const embRes = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: profileText,
+        });
+
+        const embedding = embRes.data[0].embedding; // number[]
+
+        await query(
+          `
+          INSERT INTO user_embeddings (user_id, journey_embedding)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id) DO UPDATE
+          SET journey_embedding = EXCLUDED.journey_embedding,
+              updated_at = now()
+        `,
+          [user.id, embedding]
+        );
+
+
+
+        
+      }
+    } catch (err) {
+      console.error("[/api/journey] Failed to update user_embeddings:", err);
+      // Again: do not block the question flow if embedding fails
+    }
+    // ----------------------------------------------------------------
 
     // --- PROMPT: LANGUAGE ONLY FROM looking_for_text ---
     const systemPrompt = `
@@ -172,10 +245,7 @@ Additional rules:
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        userPrompt,
-      ],
+      messages: [{ role: "system", content: systemPrompt }, userPrompt],
     });
 
     const raw = completion.choices[0].message?.content ?? "{}";

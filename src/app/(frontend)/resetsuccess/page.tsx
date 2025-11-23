@@ -1,8 +1,10 @@
 // src/app/(frontend)/resetsuccess/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "../../../hooks/useTranslation";
 
 const defaultTexts = {
@@ -12,6 +14,11 @@ const defaultTexts = {
 };
 
 export default function ResetSuccessPage() {
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false); // ✅ did we check localStorage for session?
+
+  const router = useRouter();
+
   const { texts, loading } = useTranslation(defaultTexts, "resetSuccessPage");
 
   // Safe fallback if translation fails
@@ -20,7 +27,48 @@ export default function ResetSuccessPage() {
       ? defaultTexts
       : texts;
 
-  if (loading) {
+  // ✅ SESSION CHECK (protect /resetsuccess after logout)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let foundEmail: string | null = null;
+
+    // 1) primary session key
+    const rawUser = window.localStorage.getItem("soulsync.user");
+    if (rawUser) {
+      try {
+        const parsed = JSON.parse(rawUser);
+        if (parsed?.email) {
+          foundEmail = String(parsed.email).trim().toLowerCase();
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+
+    // 2) fallback to old keys if needed
+    if (!foundEmail) {
+      const fromSignup = window.localStorage.getItem("ssai.signup.email");
+      const fromLogin = window.localStorage.getItem("ssai.login.email");
+      const fallback = fromSignup || fromLogin;
+      if (fallback) {
+        foundEmail = String(fallback).trim().toLowerCase();
+      }
+    }
+
+    setSessionEmail(foundEmail);
+    setAuthChecked(true); // ✅ we have checked localStorage at least once
+  }, []);
+
+  // If we have checked auth and there is NO session → block route & redirect
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!sessionEmail) {
+      router.replace("/"); // user is logged out -> cannot stay on /resetsuccess
+    }
+  }, [authChecked, sessionEmail, router]);
+
+  if (loading || !authChecked) {
     return (
       <main
         className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"

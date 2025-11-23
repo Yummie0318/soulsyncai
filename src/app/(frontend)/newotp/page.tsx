@@ -17,9 +17,12 @@ export default function NewOtpPage() {
   const [otp, setOtp] = useState<string[]>(["", "", "", ""]);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // email from signup flow
   const [email, setEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false); // ✅ did we check localStorage?
+
   const [submitting, setSubmitting] = useState(false); // for verify
-  const [resending, setResending] = useState(false);   // for resend
+  const [resending, setResending] = useState(false); // for resend
   const [resendCooldown, setResendCooldown] = useState(0); // seconds left
 
   const [error, setError] = useState<string | null>(null);
@@ -34,14 +37,25 @@ export default function NewOtpPage() {
       ? defaultTexts
       : texts;
 
-  // Load email from localStorage (saved during signup)
+  // ✅ Load email from localStorage (saved during signup) and mark authChecked
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const storedEmail = window.localStorage.getItem("ssai.signup.email");
     if (storedEmail) {
       setEmail(storedEmail);
     }
+
+    setAuthChecked(true); // we have checked at least once
   }, []);
+
+  // ✅ If we checked and there's NO signup email → redirect (cannot access /newotp)
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!email) {
+      router.replace("/"); // or "/signup" if you have that
+    }
+  }, [authChecked, email, router]);
 
   // Countdown for resend cooldown
   useEffect(() => {
@@ -181,8 +195,10 @@ export default function NewOtpPage() {
     }
   };
 
-  if (loading) {
-    // Simple Apple-style skeleton
+  const codeComplete = otp.join("").trim().length === 4;
+
+  // While translations OR auth-check are running → skeleton
+  if (loading || !authChecked) {
     return (
       <main
         className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
@@ -219,8 +235,6 @@ export default function NewOtpPage() {
       </main>
     );
   }
-
-  const codeComplete = otp.join("").trim().length === 4;
 
   return (
     <main
