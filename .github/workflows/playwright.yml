@@ -10,10 +10,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # 👇 This must match the Environment name you see in GitHub
-    environment: <YOUR_ENV_NAME>
+    # 👇 VERY IMPORTANT! Must match the name of your GitHub Environment
+    environment: <YOUR_ENVIRONMENT_NAME>
 
-    # 👇 Use the Environment variables via `vars.*`
+    # 👇 Use GitHub Environment Variables
     env:
       DATABASE_URL: ${{ vars.DATABASE_URL }}
       OPENAI_API_KEY: ${{ vars.OPENAI_API_KEY }}
