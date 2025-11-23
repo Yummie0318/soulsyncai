@@ -1,23 +1,44 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-test('WelcomePage renders logo, title, subtitle, and buttons', async ({ page }: { page: Page }) => {
-  // Update this path if your WelcomePage is served at a different route
-  await page.goto('/(frontend)/welcome');
+test.describe('SoulSync Welcome Page', () => {
+  // Optionally set up initial localStorage values
+  test.beforeEach(async ({ page }) => {
+    // Example: set a mock user session (customize as needed)
+    await page.addInitScript(() => {
+      localStorage.setItem('user_id', 'test-user');
+    });
+  });
 
-  // Check logo is visible
-  await expect(page.locator('img[alt="SoulSync Logo"]')).toBeVisible();
+  test('should display logo, title, subtitle, and main buttons', async ({ page }) => {
+    // Visit your Welcome page route (adjust if you use a full URL in CI)
+    await page.goto('http://localhost:3000/(frontend)/welcome');
 
-  // Check title
-  await expect(page.locator('h1')).toHaveText('SoulSync AI');
+    // Logo
+    await expect(page.locator('img[alt="SoulSync Logo"]')).toBeVisible();
 
-  // Check subtitle
-  await expect(page.getByText("Let’s find your person.")).toBeVisible();
+    // Title
+    await expect(page.locator('h1')).toHaveText('SoulSync AI');
 
-  // Check buttons
-  await expect(page.getByRole('button', { name: 'Continue my journey' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Start a new journey' })).toBeVisible();
+    // Subtitle
+    await expect(page.getByText("Let’s find your person.")).toBeVisible();
 
-  // Check links
-  await expect(page.locator('a[href="/login"]')).toBeVisible();
-  await expect(page.locator('a[href="/new"]')).toBeVisible();
+    // Buttons
+    await expect(page.getByRole('button', { name: 'Continue my journey' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start a new journey' })).toBeVisible();
+
+    // Links
+    await expect(page.locator('a[href="/login"]')).toBeVisible();
+    await expect(page.locator('a[href="/new"]')).toBeVisible();
+  });
+
+  // Example: Add API mocking or navigation tests if you want (like your island tests)
+  // If your WelcomePage responds to API or localStorage, you can customize below!
+
+  // test('should redirect to another page if certain localStorage key is missing', async ({ page }) => {
+  //   await page.addInitScript(() => {
+  //     localStorage.removeItem('user_id');
+  //   });
+  //   await page.goto('http://localhost:3000/(frontend)/welcome');
+  //   await expect(page).toHaveURL(/login/);
+  // });
 });
