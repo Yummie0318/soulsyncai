@@ -22,13 +22,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: List all test files in ./tests/
+      - name: List test files
         run: |
-          echo "📜 Listing all test files in ./tests/"
-          find ./tests -name "*.spec.ts"
+          echo "📜 Listing tests/ folder"
+          ls -R ./tests
 
-      - name: Run Playwright tests
+      # ⬇️ Start Next.js server
+      - name: Start Next.js app
+        run: npm run build && npm start &
+        env:
+          PORT: 3000
+
+      # ⬇️ Wait for the server to be ready
+      - name: Wait for Next.js to be ready
+        run: npx wait-on http://localhost:3000
+
+      # ⬇️ Run Playwright tests AFTER server is running
+      - name: Run Playwright Tests
         run: npx playwright test
