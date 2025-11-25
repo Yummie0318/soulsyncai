@@ -39,7 +39,10 @@ interface HistoryItem {
 // ---------- UI translations ----------
 const defaultTexts = {
   subtitle: "Let’s find your person.",
-  skip: "Skip question",
+  skip: "...", // generic fallback
+  skipChoice: "None of these feel right",
+  skipScale: "I can’t rate this",
+  skipText: "I’d rather not answer this",
   next: "Next question",
   loadingJourney: "Loading your journey…",
   noUser: "We couldn’t find your session. Please log in again.",
@@ -59,7 +62,9 @@ export default function JourneyPage() {
   const router = useRouter();
 
   const { texts, loading } = useTranslation(defaultTexts, "journeyPage");
-  const safeTexts = texts?.skip ? (texts as typeof defaultTexts) : defaultTexts;
+  const safeTexts = texts?.skip
+    ? ({ ...defaultTexts, ...(texts as any) } as typeof defaultTexts)
+    : defaultTexts;
 
   useEffect(() => {
     fixAppHeight();
@@ -81,7 +86,7 @@ export default function JourneyPage() {
   // Auth + user
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [authChecked, setAuthChecked] = useState(false); // ✅ we checked localStorage at least once
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Browser language
   const [browserLang, setBrowserLang] = useState<string>("en");
@@ -107,7 +112,7 @@ export default function JourneyPage() {
 
   // Match prompt modal state
   const [matchPromptOpen, setMatchPromptOpen] = useState(false);
-  const [matchPromptShown, setMatchPromptShown] = useState(false); // so we don't annoy the user
+  const [matchPromptShown, setMatchPromptShown] = useState(false); // only for this session
 
   // Load user from localStorage (and mark authChecked)
   useEffect(() => {
@@ -120,18 +125,9 @@ export default function JourneyPage() {
           setUserName(parsed.displayName || parsed.name);
         }
       }
-
-      // Check if we already showed the match prompt before
-      const matchPromptFlag = localStorage.getItem(
-        "soulsync.matchPrompt.shown"
-      );
-      if (matchPromptFlag === "1") {
-        setMatchPromptShown(true);
-      }
     } catch {
       // ignore
     } finally {
-      // we have checked localStorage at least once
       setAuthChecked(true);
     }
   }, []);
@@ -140,7 +136,7 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!authChecked) return;
     if (!userEmail) {
-      router.replace("/"); // send to landing / login
+      router.replace("/");
     }
   }, [authChecked, userEmail, router]);
 
@@ -207,6 +203,23 @@ export default function JourneyPage() {
     }
   }
 
+  // 🔹 Contextual label for secondary button (formerly "Skip question")
+  function getSecondaryButtonLabel(q: JourneyQuestion | null): string {
+    if (!q) return safeTexts.skip;
+    switch (q.type) {
+      case "single_choice":
+      case "multi_choice":
+        return safeTexts.skipChoice || safeTexts.skip;
+      case "scale_1_5":
+        return safeTexts.skipScale || safeTexts.skip;
+      case "text_short":
+      case "text_long":
+        return safeTexts.skipText || safeTexts.skip;
+      default:
+        return safeTexts.skip;
+    }
+  }
+
   async function fetchNextQuestion(withAnswer: boolean) {
     if (!userEmail) {
       setError(safeTexts.noUser);
@@ -258,20 +271,11 @@ export default function JourneyPage() {
       setCurrentQuestion(data.question);
       resetAnswerState();
 
-      // 🎯 After the user has answered at least 4 questions,
-      // show the match modal ONCE (not every 4).
-      if (
-        justAnswered &&
-        !matchPromptShown &&
-        newHistory.length >= 4 // only counting answered (not skipped)
-      ) {
+      // 🎯 After the user has answered EXACTLY 4 questions in this session,
+      // automatically show the match modal ONCE (for the 4th answer only).
+      if (justAnswered && !matchPromptShown && newHistory.length === 4) {
         setMatchPromptOpen(true);
         setMatchPromptShown(true);
-        try {
-          localStorage.setItem("soulsync.matchPrompt.shown", "1");
-        } catch {
-          // ignore
-        }
       }
     } catch {
       setError(safeTexts.errorGeneric);
@@ -387,6 +391,7 @@ export default function JourneyPage() {
               rows={q.type === "text_long" ? 5 : 3}
               value={textAnswer}
               onChange={(e) => setTextAnswer(e.target.value)}
+              placeholder="Type your thoughts here…"
               className="w-full rounded-3xl border border-[#e5e5ea] bg-[#f9f9fb]
                 px-4 py-3 text-[15px]
                 focus:bg-white focus:border-[#007aff]
@@ -421,7 +426,7 @@ export default function JourneyPage() {
       // ignore
     }
     setMenuOpen(false);
-    window.location.href = "/"; // redirect
+    window.location.href = "/";
   };
 
   const displayName = userName || userEmail || "Guest";
@@ -432,6 +437,10 @@ export default function JourneyPage() {
     setMatchPromptOpen(false);
     router.push("/soulsyncmatch");
   };
+
+  // 🔍 show search icon if the user already answered AT LEAST 4 questions
+  // (in this session) – then keep it visible forever.
+  const canOpenMatchFromIcon = history.length >= 4;
 
   // While we haven't checked auth yet, show nothing / tiny loader
   if (!authChecked) {
@@ -471,7 +480,7 @@ export default function JourneyPage() {
             overflow-hidden
           "
         >
-          {/* TOP APP BAR: logo + title + burger */}
+          {/* TOP APP BAR: logo + title + burger + search */}
           <header className="mb-2">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -494,26 +503,50 @@ export default function JourneyPage() {
                 </div>
               </div>
 
-              {/* Burger / account button – subtle Apple-style tap only */}
-              <button
-                type="button"
-                aria-label="Account menu"
-                onClick={() => setMenuOpen(true)}
-                className="
-                  flex h-9 w-9 items-center justify-center
-                  rounded-full bg-[#f2f2f7]
-                  border border-[#e5e5ea]
-                  shadow-[0_4px_10px_rgba(0,0,0,0.06)]
-                  active:scale-[0.94]
-                  transition
-                "
-              >
-                <span className="flex flex-col gap-[3px]">
-                  <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
-                  <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
-                  <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                {canOpenMatchFromIcon && (
+                  <button
+                    type="button"
+                    aria-label="Find a match"
+                    onClick={() => setMatchPromptOpen(true)}
+                    className="
+                      flex h-9 w-9 items-center justify-center
+                      rounded-full bg-[#f2f2f7]
+                      border border-[#e5e5ea]
+                      shadow-[0_4px_10px_rgba(0,0,0,0.06)]
+                      active:scale-[0.94]
+                      transition
+                    "
+                  >
+                    {/* Simple magnifying glass icon */}
+                    <span className="relative flex items-center justify-center">
+                      <span className="h-3.5 w-3.5 rounded-full border border-[#3c3c43]" />
+                      <span className="absolute h-2 w-[1.5px] bg-[#3c3c43] translate-x-[7px] translate-y-[6px] rotate-45 rounded-full" />
+                    </span>
+                  </button>
+                )}
+
+                {/* Burger / account button */}
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  onClick={() => setMenuOpen(true)}
+                  className="
+                    flex h-9 w-9 items-center justify-center
+                    rounded-full bg-[#f2f2f7]
+                    border border-[#e5e5ea]
+                    shadow-[0_4px_10px_rgba(0,0,0,0.06)]
+                    active:scale-[0.94]
+                    transition
+                  "
+                >
+                  <span className="flex flex-col gap-[3px]">
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                  </span>
+                </button>
+              </div>
             </div>
 
             {currentQuestion && (
@@ -585,7 +618,7 @@ export default function JourneyPage() {
                 }
               `}
             >
-              {safeTexts.skip}
+              {getSecondaryButtonLabel(currentQuestion)}
             </button>
 
             <button

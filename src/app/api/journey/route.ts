@@ -51,6 +51,13 @@ export async function POST(req: NextRequest) {
     const email = String(body.email || "").trim().toLowerCase();
     const history = (body.history || []) as HistoryItem[];
 
+    // 🔹 NEW: browser language from frontend
+    const browserLang: string =
+      (body.browserLang && String(body.browserLang)) || "en";
+    const browserLanguages: string[] = Array.isArray(body.browserLanguages)
+      ? body.browserLanguages.map((x: any) => String(x))
+      : [browserLang];
+
     if (!email) {
       return NextResponse.json(
         { error: "email is required" },
@@ -98,8 +105,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // NEW: store the *latest* answer into journey_answers (if there is one)
-    // --------------------------------------------------------------------
+    // --- STORE LATEST ANSWER ---
     if (Array.isArray(history) && history.length > 0) {
       const last = history[history.length - 1];
 
@@ -117,11 +123,9 @@ export async function POST(req: NextRequest) {
             "[/api/journey] Failed to insert into journey_answers:",
             err
           );
-          // We don't fail the whole request – user journey must continue
         }
       }
     }
-    // --------------------------------------------------------------------
 
     const lookingFor = (user.looking_for_text || "").trim();
     if (!lookingFor) {
@@ -131,17 +135,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- NO OPENAI → FALLBACK ---
     if (!openai) {
       console.warn("/api/journey → OPENAI_API_KEY missing");
       return NextResponse.json({ ok: true, question: fallbackQuestion() });
     }
 
-    // OPTIONAL (RECOMMENDED): update user_embeddings from full profile
-    // This will be used later by /api/match to find best matches.
-    // ----------------------------------------------------------------
+    // --- CREATE / UPDATE USER EMBEDDING ---
     try {
-      // Only start embedding when we have at least a few answers
       if (history.length >= 3) {
         const profileLines: string[] = [];
 
@@ -164,28 +164,25 @@ export async function POST(req: NextRequest) {
 
         const embedding = embRes.data[0].embedding; // number[]
 
+        // 🔴 IMPORTANT FIX: convert to pgvector literal "[...]" and cast ::vector
+        const embeddingVectorLiteral = JSON.stringify(embedding); // gives "[0.1,-0.2,...]"
+
         await query(
           `
           INSERT INTO user_embeddings (user_id, journey_embedding)
-          VALUES ($1, $2)
+          VALUES ($1, $2::vector)
           ON CONFLICT (user_id) DO UPDATE
           SET journey_embedding = EXCLUDED.journey_embedding,
               updated_at = now()
         `,
-          [user.id, embedding]
+          [user.id, embeddingVectorLiteral]
         );
-
-
-
-        
       }
     } catch (err) {
       console.error("[/api/journey] Failed to update user_embeddings:", err);
-      // Again: do not block the question flow if embedding fails
     }
-    // ----------------------------------------------------------------
 
-    // --- PROMPT: LANGUAGE ONLY FROM looking_for_text ---
+    // --- PROMPT: LANGUAGE SELECTION WITH BROWSER FALLBACK ---
     const systemPrompt = `
 You are SoulSync AI's Question Engine.
 
@@ -195,11 +192,17 @@ Goal:
 You will receive:
 - looking_for_text: the original free-form text describing who they are looking for.
 - history: previous question/answer pairs.
+- browserLang: the main browser language (e.g. "en-US", "nl-NL").
+- browserLanguages: full list of browser languages ordered by preference.
 
-Language rules (IMPORTANT):
-1. Detect the language of "looking_for_text".
-2. If it is clearly written in a specific language, use THAT language for the question, explanation, and options.
-3. If the language of "looking_for_text" is unclear, extremely short, or mixed, DEFAULT to English.
+Language rules (VERY IMPORTANT):
+0. If history contains at least one previous question, detect the language of the FIRST question and KEEP USING THAT SAME LANGUAGE for all further questions. Do not switch away from it.
+1. Otherwise, detect the language of "looking_for_text".
+   - If it is clearly written in a specific language (not just random letters, not just 1–2 characters), use THAT language.
+2. If "looking_for_text" is unclear, extremely short, obviously gibberish or mixed, then IGNORE it for language choice and instead:
+   - Use the first browser language "browserLang" as the language for the question, explanation and options.
+   - Example: "nl-NL" → Dutch, "de-DE" → German, "en-US" → English, etc.
+3. If you cannot reasonably decide from both looking_for_text and browserLang, default to ENGLISH.
 4. Use exactly ONE language in your output. Do NOT mix multiple languages.
 5. Do NOT mention language detection or these rules in the JSON.
 
@@ -232,13 +235,15 @@ Additional rules:
 - For "text_long": deeper / more reflective.
 - Never ask for personal identifiable information.
 - Do NOT output anything outside the JSON object.
-`.trim();
+    `.trim();
 
     const userPrompt = {
       role: "user" as const,
       content: JSON.stringify({
         looking_for_text: lookingFor,
         history,
+        browserLang,
+        browserLanguages,
       }),
     };
 
