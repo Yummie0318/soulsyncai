@@ -45,6 +45,8 @@ function fallbackQuestion(): JourneyQuestion {
 }
 
 export async function POST(req: NextRequest) {
+  let totalAnswers = 0; // make available for success + fallback responses
+
   try {
     const body = await req.json();
 
@@ -127,6 +129,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // --- NEW: COUNT TOTAL ANSWERS FOR THIS USER (PERSISTED) ---
+    try {
+      const countRes = await query<{ total: number }>(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM journey_answers
+        WHERE user_id = $1
+      `,
+        [user.id]
+      );
+
+      const rawTotal = countRes.rows[0]?.total;
+      totalAnswers =
+        typeof rawTotal === "number" ? rawTotal : Number(rawTotal || 0);
+    } catch (err) {
+      console.error("[/api/journey] Failed to count journey_answers:", err);
+      totalAnswers = 0;
+    }
+
     const lookingFor = (user.looking_for_text || "").trim();
     if (!lookingFor) {
       return NextResponse.json(
@@ -137,7 +158,11 @@ export async function POST(req: NextRequest) {
 
     if (!openai) {
       console.warn("/api/journey → OPENAI_API_KEY missing");
-      return NextResponse.json({ ok: true, question: fallbackQuestion() });
+      return NextResponse.json({
+        ok: true,
+        question: fallbackQuestion(),
+        totalAnswers,
+      });
     }
 
     // --- CREATE / UPDATE USER EMBEDDING ---
@@ -165,7 +190,7 @@ export async function POST(req: NextRequest) {
         const embedding = embRes.data[0].embedding; // number[]
 
         // 🔴 IMPORTANT FIX: convert to pgvector literal "[...]" and cast ::vector
-        const embeddingVectorLiteral = JSON.stringify(embedding); // gives "[0.1,-0.2,...]"
+        const embeddingVectorLiteral = JSON.stringify(embedding); // "[0.1,-0.2,...]"
 
         await query(
           `
@@ -271,14 +296,16 @@ Additional rules:
       parsed.id = `q-${Date.now()}`;
     }
 
-    return NextResponse.json({ ok: true, question: parsed });
+    return NextResponse.json({ ok: true, question: parsed, totalAnswers });
   } catch (err) {
     console.error("Journey API Error:", err);
+    // We may not have been able to compute totalAnswers here, so just return 0 in fallback
     return NextResponse.json(
       {
         ok: true,
         question: fallbackQuestion(),
         error: "fallback_used",
+        totalAnswers: totalAnswers || 0,
       },
       { status: 200 }
     );

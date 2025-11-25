@@ -53,7 +53,7 @@ const defaultTexts = {
   // Match prompt modal
   matchPromptTitle: "We can already look for a match",
   matchPromptSubtitle:
-    "Based on your answers so far, SoulSync AI can start looking for your best match. You can also continue your journey to improve the match.",
+    "Based on your answers so far, SoulSync AI can start looking for your best match. You can also continue your journey to improve the match. Later, you can always start searching again using the search icon at the top right.",
   matchPromptFindMatch: "Look for a match",
   matchPromptContinue: "Continue my journey",
 };
@@ -113,6 +113,9 @@ export default function JourneyPage() {
   // Match prompt modal state
   const [matchPromptOpen, setMatchPromptOpen] = useState(false);
   const [matchPromptShown, setMatchPromptShown] = useState(false); // only for this session
+
+  // 🔢 Total answers across ALL time for this user (from backend)
+  const [totalAnswers, setTotalAnswers] = useState<number>(0);
 
   // Load user from localStorage (and mark authChecked)
   useEffect(() => {
@@ -270,6 +273,11 @@ export default function JourneyPage() {
 
       setCurrentQuestion(data.question);
       resetAnswerState();
+
+      // 🔢 update total answers from backend (persisted count)
+      if (typeof data.totalAnswers === "number") {
+        setTotalAnswers(data.totalAnswers);
+      }
 
       // 🎯 After the user has answered EXACTLY 4 questions in this session,
       // automatically show the match modal ONCE (for the 4th answer only).
@@ -439,8 +447,8 @@ export default function JourneyPage() {
   };
 
   // 🔍 show search icon if the user already answered AT LEAST 4 questions
-  // (in this session) – then keep it visible forever.
-  const canOpenMatchFromIcon = history.length >= 4;
+  // in total (from DB), regardless of current session
+  const canOpenMatchFromIcon = totalAnswers >= 4;
 
   // While we haven't checked auth yet, show nothing / tiny loader
   if (!authChecked) {
@@ -713,7 +721,7 @@ export default function JourneyPage() {
       <AnimatePresence>
         {matchPromptOpen && (
           <motion.div
-            className="fixed inset-0 z-30 flex items-center justify-center bg-black/30"
+            className="fixed inset-0 z-30 flex items-center justify-center bg:black/30 bg-black/30"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
