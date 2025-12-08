@@ -1,3 +1,4 @@
+// tests/new.spec.ts
 import { test, expect } from "@playwright/test";
 
 test.describe("Signup Page (/new)", () => {
@@ -42,13 +43,14 @@ test.describe("Signup Page (/new)", () => {
     await page.fill("#password", "password123");
 
     const signupButton = page.getByRole("button", { name: "Sign up" });
-
     await expect(signupButton).toBeEnabled();
     await signupButton.click();
 
-    // ✅ Updated - flexible regex for any "valid email" message
-    const errorText = page.getByText(/valid email/i);
+    // Debug screenshot for CI/local
+    await page.screenshot({ path: 'debug-invalid-email.png', fullPage: true });
 
+    // More robust locator for error message
+    const errorText = page.locator('p', { hasText: /valid email/i });
     await expect(errorText).toBeVisible({ timeout: 7000 });
   });
 
