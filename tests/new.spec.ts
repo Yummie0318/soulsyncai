@@ -47,10 +47,11 @@ test.describe("Signup Page (/new)", () => {
     await signupButton.click();
 
     // Debug screenshot for CI/local
-    await page.screenshot({ path: 'debug-invalid-email.png', fullPage: true });
+    await page.screenshot({ path: "debug-invalid-email.png", fullPage: true });
 
-    // More robust locator for error message
-    const errorText = page.locator('p', { hasText: /valid email/i });
+    // More robust locator (matches ANY tag that contains "valid email")
+    const errorText = page.getByText(/valid email/i, { exact: false });
+
     await expect(errorText).toBeVisible({ timeout: 7000 });
   });
 
@@ -67,7 +68,7 @@ test.describe("Signup Page (/new)", () => {
     const signupButton = page.getByRole("button", { name: "Sign up" });
 
     await page.fill("#name", "Test User");
-    await page.fill("#email", "joylynmadriagats@gmail.com"); // ← your email here
+    await page.fill("#email", "joylynmadriagats@gmail.com"); // your email
     await page.fill("#password", "password123");
 
     await expect(signupButton).toBeEnabled();
