@@ -91,7 +91,7 @@ test.describe("Signup Page (/new)", () => {
 
   test("sign up button stays disabled for too short password", async ({ page }) => {
     await page.fill("#name", "Test User");
-    await page.fill("#email", "test@example.com");
+    await page.fill("#email", "joylynmadriagats@gmail.com");
     await page.fill("#password", "short"); // length < 8
 
     const signupButton = page.getByRole("button", { name: "Sign up" });
@@ -106,7 +106,7 @@ test.describe("Signup Page (/new)", () => {
     const signupButton = page.getByRole("button", { name: "Sign up" });
 
     await page.fill("#name", "Test User");
-    await page.fill("#email", "test@example.com");
+    await page.fill("#email", "joylynmadriagats@gmail.com");
     await page.fill("#password", "password123");
 
     await expect(signupButton).toBeEnabled();
