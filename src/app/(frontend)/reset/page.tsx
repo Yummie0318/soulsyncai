@@ -18,9 +18,14 @@ export default function ResetPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
 
+  // reset flow state
   const [email, setEmail] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [needsRestart, setNeedsRestart] = useState(false);
+
+  // session / auth state (like /otp, /looking, /forgot)
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false); // ✅ did we check localStorage for session?
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +40,48 @@ export default function ResetPage() {
       ? defaultTexts
       : texts;
 
-  // Check localStorage for email + verified flag
+  // ✅ SESSION CHECK (protect /reset after logout)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let foundEmail: string | null = null;
+
+    // 1) primary session key
+    const rawUser = window.localStorage.getItem("soulsync.user");
+    if (rawUser) {
+      try {
+        const parsed = JSON.parse(rawUser);
+        if (parsed?.email) {
+          foundEmail = String(parsed.email).trim().toLowerCase();
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+
+    // 2) fallback to old keys if needed
+    if (!foundEmail) {
+      const fromSignup = window.localStorage.getItem("ssai.signup.email");
+      const fromLogin = window.localStorage.getItem("ssai.login.email");
+      const fallback = fromSignup || fromLogin;
+      if (fallback) {
+        foundEmail = String(fallback).trim().toLowerCase();
+      }
+    }
+
+    setSessionEmail(foundEmail);
+    setAuthChecked(true); // ✅ we have checked localStorage at least once
+  }, []);
+
+  // If we have checked auth and there is NO session → block route & redirect
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!sessionEmail) {
+      router.replace("/"); // user is logged out -> cannot stay on /reset
+    }
+  }, [authChecked, sessionEmail, router]);
+
+  // Check localStorage for email + verified flag for reset flow
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -109,8 +155,8 @@ export default function ResetPage() {
     }
   };
 
-  // Skeleton while translations load
-  if (loading) {
+  // Skeleton while translations OR auth-check load
+  if (loading || !authChecked) {
     return (
       <main
         className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4"
@@ -143,7 +189,7 @@ export default function ResetPage() {
     );
   }
 
-  // If we lost context (no email / not verified), show a soft error screen
+  // If we lost reset context (no email / not verified), show soft error screen
   if (needsRestart) {
     return (
       <main

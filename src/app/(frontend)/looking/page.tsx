@@ -16,6 +16,7 @@ const defaultTexts = {
 export default function LookingPage() {
   const [text, setText] = useState("");
   const [email, setEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false); // ✅ did we check localStorage?
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -29,22 +30,49 @@ export default function LookingPage() {
       ? defaultTexts
       : texts;
 
-  // Load email once (could come from signup or login flow)
+  // Load email once (from unified soulsync.user first, then fallback)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const fromSignup = window.localStorage.getItem("ssai.signup.email");
-    const fromLogin = window.localStorage.getItem("ssai.login.email");
+    let foundEmail: string | null = null;
 
-    if (fromSignup) {
-      setEmail(fromSignup);
-    } else if (fromLogin) {
-      setEmail(fromLogin);
+    // 1) primary session key
+    const rawUser = window.localStorage.getItem("soulsync.user");
+    if (rawUser) {
+      try {
+        const parsed = JSON.parse(rawUser);
+        if (parsed?.email) {
+          foundEmail = String(parsed.email).trim().toLowerCase();
+        }
+      } catch {
+        // ignore parse error
+      }
     }
+
+    // 2) fallback to old keys if needed
+    if (!foundEmail) {
+      const fromSignup = window.localStorage.getItem("ssai.signup.email");
+      const fromLogin = window.localStorage.getItem("ssai.login.email");
+      const fallback = fromSignup || fromLogin;
+      if (fallback) {
+        foundEmail = String(fallback).trim().toLowerCase();
+      }
+    }
+
+    setEmail(foundEmail);
+    setAuthChecked(true); // ✅ we have checked localStorage at least once
   }, []);
 
+  // If we have checked auth and there is NO email → block route & redirect
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!email) {
+      router.replace("/"); // user is logged out -> cannot stay on /looking
+    }
+  }, [authChecked, email, router]);
+
   // Skeleton (Apple-style)
-  if (loading) {
+  if (loading || !authChecked) {
     return (
       <main className="min-h-screen bg-[#f2f2f7] flex items-center justify-center px-4">
         <div className="w-full max-w-[430px]">
@@ -69,18 +97,15 @@ export default function LookingPage() {
     setError(null);
     setInfo(null);
 
+    // Only basic non-empty check now ✅
     if (!trimmed) {
       setError("Please tell us a little about the person you’re looking for.");
       return;
     }
 
-    if (trimmed.length < 20) {
-      setError("Add a bit more detail so SoulSync can understand you better.");
-      return;
-    }
-
+    // Extra safety: if somehow email is missing, force them out
     if (!email) {
-      setError("We couldn’t find your email. Please log in or sign up again.");
+      router.replace("/");
       return;
     }
 
@@ -102,7 +127,9 @@ export default function LookingPage() {
 
       if (!res.ok) {
         if (data?.error === "User not found") {
-          setError("We couldn’t find your profile. Please log in or sign up again.");
+          setError(
+            "We couldn’t find your profile. Please log in or sign up again."
+          );
         } else {
           setError(data?.error || "Something went wrong. Please try again.");
         }
@@ -130,7 +157,10 @@ export default function LookingPage() {
     }
   };
 
-  const canContinue = text.trim().length >= 20 && !submitting;
+  // ✅ New logic: only require non-empty for continue
+  const trimmedLength = text.trim().length;
+  const canContinue = trimmedLength > 0 && !submitting;
+  const isBelowSoftMin = trimmedLength < 3; // show red counter if < 3
 
   return (
     <main
@@ -208,7 +238,12 @@ export default function LookingPage() {
                 placeholder="Kind, family-oriented, loves traveling, enjoys deep conversations late at night…"
               />
 
-              <div className="absolute bottom-2 right-4 text-[12px] text-[#8e8e93]">
+              {/* ✅ Character counter: red if length < 3 */}
+              <div
+                className={`absolute bottom-2 right-4 text-[12px] ${
+                  isBelowSoftMin ? "text-[#ff3b30]" : "text-[#8e8e93]"
+                }`}
+              >
                 {text.length} / 200
               </div>
             </div>

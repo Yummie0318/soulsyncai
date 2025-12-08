@@ -1,7 +1,7 @@
 // src/app/(frontend)/forgot/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "../../../hooks/useTranslation";
@@ -36,6 +36,40 @@ export default function ForgotPage() {
     !("sendOtp" in texts)
       ? defaultTexts
       : texts;
+
+  // ✅ Just PREFILL email if we know it — do NOT block logged-out users
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let foundEmail: string | null = null;
+
+    // 1) primary session key
+    const rawUser = window.localStorage.getItem("soulsync.user");
+    if (rawUser) {
+      try {
+        const parsed = JSON.parse(rawUser);
+        if (parsed?.email) {
+          foundEmail = String(parsed.email).trim().toLowerCase();
+        }
+      } catch {
+        // ignore parse error
+      }
+    }
+
+    // 2) fallback to old keys if needed
+    if (!foundEmail) {
+      const fromSignup = window.localStorage.getItem("ssai.signup.email");
+      const fromLogin = window.localStorage.getItem("ssai.login.email");
+      const fallback = fromSignup || fromLogin;
+      if (fallback) {
+        foundEmail = String(fallback).trim().toLowerCase();
+      }
+    }
+
+    if (foundEmail) {
+      setEmail(foundEmail); // prefill only, no redirect
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +127,9 @@ export default function ForgotPage() {
     }
   };
 
+  const canSubmit = email.trim() && !submitting;
+
+  // While translations are running → skeleton only
   if (loading) {
     // Apple-style loading skeleton
     return (
@@ -131,8 +168,6 @@ export default function ForgotPage() {
       </main>
     );
   }
-
-  const canSubmit = email.trim() && !submitting;
 
   return (
     <main

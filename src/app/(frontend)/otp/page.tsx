@@ -18,8 +18,9 @@ export default function OtpPage() {
   const [otp, setOtp] = useState<string[]>(["", "", "", ""]);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // email used for reset flow (from /forgot)
   const [email, setEmail] = useState<string | null>(null);
-  const [missingEmail, setMissingEmail] = useState(false);
+  const [contextChecked, setContextChecked] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,21 +36,24 @@ export default function OtpPage() {
       ? defaultTexts
       : texts;
 
-      useEffect(() => {
-        fixAppHeight();
-      }, []);
+  useEffect(() => {
+    fixAppHeight();
+  }, []);
 
-  // Read email from localStorage (set in /forgot)
+  // ✅ Reset-context guard: only allow /otp if we have ssai.reset.email
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const stored = window.localStorage.getItem("ssai.reset.email");
+
     if (stored) {
-      setEmail(stored);
-      setMissingEmail(false);
+      setEmail(stored.trim().toLowerCase());
+      setContextChecked(true);
     } else {
-      setMissingEmail(true);
+      // No reset email → user didn't come from /forgot → send them back
+      router.replace("/forgot");
     }
-  }, []);
+  }, [router]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
@@ -78,7 +82,6 @@ export default function OtpPage() {
 
     if (!email) {
       setError("We couldn’t find your email context. Please start again.");
-      setMissingEmail(true);
       return;
     }
 
@@ -137,7 +140,6 @@ export default function OtpPage() {
 
     if (!email) {
       setError("We couldn’t find your email. Please start again.");
-      setMissingEmail(true);
       return;
     }
 
@@ -170,19 +172,20 @@ export default function OtpPage() {
     }
   };
 
-  if (loading) {
-    // Simple Apple-style skeleton
-    return (
-   <main
-  className="bg-[#f2f2f7] flex items-center justify-center px-4"
-  style={{
-    height: "var(--app-height)",
-    paddingTop: "env(safe-area-inset-top)",
-    paddingBottom: "env(safe-area-inset-bottom)",
-    overflow: "hidden",
-  }}
->
+  const canSubmit = otp.join("").trim().length === 4 && !submitting;
 
+  // While translations OR reset-context are still being checked → skeleton
+  if (loading || !contextChecked) {
+    return (
+      <main
+        className="bg-[#f2f2f7] flex items-center justify-center px-4"
+        style={{
+          height: "var(--app-height)",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          overflow: "hidden",
+        }}
+      >
         <div className="w-full max-w-[430px]">
           <div
             className="
@@ -212,10 +215,8 @@ export default function OtpPage() {
     );
   }
 
-  // If we lost the email context, tell user to start again
-  if (missingEmail) {
-    return (
-      <main
+  return (
+    <main
       className="bg-[#f2f2f7] flex items-center justify-center px-4"
       style={{
         height: "var(--app-height)",
@@ -224,74 +225,6 @@ export default function OtpPage() {
         overflow: "hidden",
       }}
     >
-    
-        <div className="w-full max-w-[430px]">
-          <div
-            className="
-              flex flex-col items-center
-              rounded-[40px] bg-white
-              border border-[#f1f1f4]
-              shadow-[0_18px_40px_rgba(0,0,0,0.04)]
-              px-6 py-10 sm:px-8 sm:py-12
-              apple-motion-card
-            "
-          >
-            <header className="flex flex-col items-center text-center apple-motion-logo">
-              <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[#f5f5f7]">
-                <Image
-                  src="/logo-removebg-preview.png"
-                  alt="SoulSync Logo"
-                  width={80}
-                  height={80}
-                  priority
-                  className="object-contain"
-                />
-              </div>
-              <h1 className="text-[26px] sm:text-[28px] font-semibold tracking-tight text-[#3c3c43]">
-                SoulSync AI
-              </h1>
-              <p className="mt-3 text-[14px] sm:text-[15px] text-[#8e8e93] max-w-xs">
-                We couldn’t find your reset email. Please start the password
-                recovery flow again.
-              </p>
-            </header>
-
-            <div className="mt-8 w-full apple-motion-buttons">
-              <button
-                type="button"
-                onClick={() => router.push("/forgot")}
-                className="
-                  w-full rounded-2xl
-                  bg-[#1c1c1e]
-                  py-3.5 text-[16px] font-semibold text-white
-                  tracking-tight transition
-                  hover:bg-[#2c2c2e]
-                  active:bg-black active:scale-[0.97]
-                  shadow-[0_8px_20px_rgba(0,0,0,0.18)]
-                "
-              >
-                Back to “Forgot password”
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const canSubmit = otp.join("").trim().length === 4 && !submitting;
-
-  return (
-    <main
-    className="bg-[#f2f2f7] flex items-center justify-center px-4"
-    style={{
-      height: "var(--app-height)",
-      paddingTop: "env(safe-area-inset-top)",
-      paddingBottom: "env(safe-area-inset-bottom)",
-      overflow: "hidden",
-    }}
-  >
-  
       <div className="w-full max-w-[430px]">
         <div
           className="

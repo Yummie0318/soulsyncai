@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { fixAppHeight } from "../../app-height-fix";
+import { useRouter } from "next/navigation";
 
 // ---------- Types ----------
 type QuestionType =
@@ -38,16 +39,32 @@ interface HistoryItem {
 // ---------- UI translations ----------
 const defaultTexts = {
   subtitle: "Let’s find your person.",
-  skip: "Skip question",
+  skip: "...", // generic fallback
+  skipChoice: "None of these feel right",
+  skipScale: "I can’t rate this",
+  skipText: "I’d rather not answer this",
   next: "Next question",
   loadingJourney: "Loading your journey…",
   noUser: "We couldn’t find your session. Please log in again.",
   errorGeneric: "We couldn’t load the next question. Please try again.",
+  logout: "Log out",
+  whyWeAsk: "Why we ask this question",
+
+  // Match prompt modal
+  matchPromptTitle: "We can already look for a match",
+  matchPromptSubtitle:
+    "Based on your answers so far, SoulSync AI can start looking for your best match. You can also continue your journey to improve the match. Later, you can always start searching again using the search icon at the top right.",
+  matchPromptFindMatch: "Look for a match",
+  matchPromptContinue: "Continue my journey",
 };
 
 export default function JourneyPage() {
+  const router = useRouter();
+
   const { texts, loading } = useTranslation(defaultTexts, "journeyPage");
-  const safeTexts = texts?.skip ? texts : defaultTexts;
+  const safeTexts = texts?.skip
+    ? ({ ...defaultTexts, ...(texts as any) } as typeof defaultTexts)
+    : defaultTexts;
 
   useEffect(() => {
     fixAppHeight();
@@ -66,8 +83,10 @@ export default function JourneyPage() {
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
-  // User from localStorage
+  // Auth + user
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Browser language
   const [browserLang, setBrowserLang] = useState<string>("en");
@@ -88,15 +107,41 @@ export default function JourneyPage() {
   const [scaleAnswer, setScaleAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState<string>("");
 
-  // Load user from localStorage
+  // Account menu state
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Match prompt modal state
+  const [matchPromptOpen, setMatchPromptOpen] = useState(false);
+  const [matchPromptShown, setMatchPromptShown] = useState(false); // only for this session
+
+  // 🔢 Total answers across ALL time for this user (from backend)
+  const [totalAnswers, setTotalAnswers] = useState<number>(0);
+
+  // Load user from localStorage (and mark authChecked)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("soulsync.user");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.email) setUserEmail(parsed.email);
-    } catch {}
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.email) setUserEmail(parsed.email);
+        if (parsed?.displayName || parsed?.name) {
+          setUserName(parsed.displayName || parsed.name);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAuthChecked(true);
+    }
   }, []);
+
+  // If no session after checking → redirect away (cannot proceed)
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!userEmail) {
+      router.replace("/");
+    }
+  }, [authChecked, userEmail, router]);
 
   // Detect browser language
   useEffect(() => {
@@ -161,6 +206,23 @@ export default function JourneyPage() {
     }
   }
 
+  // 🔹 Contextual label for secondary button (formerly "Skip question")
+  function getSecondaryButtonLabel(q: JourneyQuestion | null): string {
+    if (!q) return safeTexts.skip;
+    switch (q.type) {
+      case "single_choice":
+      case "multi_choice":
+        return safeTexts.skipChoice || safeTexts.skip;
+      case "scale_1_5":
+        return safeTexts.skipScale || safeTexts.skip;
+      case "text_short":
+      case "text_long":
+        return safeTexts.skipText || safeTexts.skip;
+      default:
+        return safeTexts.skip;
+    }
+  }
+
   async function fetchNextQuestion(withAnswer: boolean) {
     if (!userEmail) {
       setError(safeTexts.noUser);
@@ -173,6 +235,7 @@ export default function JourneyPage() {
       setError(null);
 
       let newHistory = history;
+      let justAnswered = false;
 
       if (withAnswer && currentQuestion) {
         const summary = summarizeAnswer(currentQuestion);
@@ -186,6 +249,7 @@ export default function JourneyPage() {
             },
           ];
           setHistory(newHistory);
+          justAnswered = true;
         }
       }
 
@@ -209,6 +273,18 @@ export default function JourneyPage() {
 
       setCurrentQuestion(data.question);
       resetAnswerState();
+
+      // 🔢 update total answers from backend (persisted count)
+      if (typeof data.totalAnswers === "number") {
+        setTotalAnswers(data.totalAnswers);
+      }
+
+      // 🎯 After the user has answered EXACTLY 4 questions in this session,
+      // automatically show the match modal ONCE (for the 4th answer only).
+      if (justAnswered && !matchPromptShown && newHistory.length === 4) {
+        setMatchPromptOpen(true);
+        setMatchPromptShown(true);
+      }
     } catch {
       setError(safeTexts.errorGeneric);
     } finally {
@@ -216,10 +292,11 @@ export default function JourneyPage() {
     }
   }
 
-  // Initial load
+  // Initial load – only when we first get the email
   useEffect(() => {
     if (!userEmail || currentQuestion) return;
     fetchNextQuestion(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail]);
 
   // Render Input
@@ -228,19 +305,26 @@ export default function JourneyPage() {
       case "single_choice":
         return (
           <div className="space-y-2">
-            {q.options?.map((opt) => (
-          // single_choice buttons
-        <button
-          className={`w-full text-left rounded-2xl border px-4 py-3 text-[15px] text-[#1c1c1e]
-            ${singleChoiceAnswer === opt.id
-              ? "border-[#007aff] bg-[#f0f6ff]"
-              : "border-[#e5e5ea] bg-[#f9f9fb]"
-            }`}
-        >
-          {opt.label}
-        </button>
+            {q.options?.map((opt) => {
+              const selected = singleChoiceAnswer === opt.id;
 
-            ))}
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSingleChoiceAnswer(opt.id)}
+                  className={`w-full text-left rounded-2xl border px-4 py-3 text-[15px]
+                    flex items-center justify-between
+                    ${
+                      selected
+                        ? "border-[#007aff] bg-[#f0f6ff] text-[#1c1c1e]"
+                        : "border-[#e5e5ea] bg-[#f9f9fb] text-[#1c1c1e]"
+                    }`}
+                >
+                  <span className="text-[#1c1c1e]">{opt.label}</span>
+                </button>
+              );
+            })}
           </div>
         );
 
@@ -251,36 +335,36 @@ export default function JourneyPage() {
               const checked = multiChoiceAnswer.includes(opt.id);
               return (
                 <button
-                key={opt.id}
-                type="button"
-                onClick={() =>
-                  setMultiChoiceAnswer((prev) =>
-                    prev.includes(opt.id)
-                      ? prev.filter((i) => i !== opt.id)
-                      : [...prev, opt.id]
-                  )
-                }
-                className={`w-full rounded-2xl border px-4 py-3 text-[15px] text-[#1c1c1e]
-                  flex items-center justify-between
-                  ${
-                    checked
-                      ? "border-[#007aff] bg-[#f0f6ff]"
-                      : "border-[#e5e5ea] bg-[#f9f9fb]"
-                  }`}
-              >
-                <span className="text-[#1c1c1e]">{opt.label}</span>
-              
-                <span
-                  className={`h-5 w-5 rounded-full flex items-center justify-center text-xs
+                  key={opt.id}
+                  type="button"
+                  onClick={() =>
+                    setMultiChoiceAnswer((prev) =>
+                      prev.includes(opt.id)
+                        ? prev.filter((i) => i !== opt.id)
+                        : [...prev, opt.id]
+                    )
+                  }
+                  className={`w-full rounded-2xl border px-4 py-3 text-[15px] text-[#1c1c1e]
+                    flex items-center justify-between
                     ${
                       checked
-                        ? "bg-[#007aff] text-white"
-                        : "bg-white text-[#8e8e93] border border-[#d1d1d6]"
+                        ? "border-[#007aff] bg-[#f0f6ff]"
+                        : "border-[#e5e5ea] bg-[#f9f9fb]"
                     }`}
                 >
-                  ✓
-                </span>
-              </button>              
+                  <span className="text-[#1c1c1e]">{opt.label}</span>
+
+                  <span
+                    className={`h-5 w-5 rounded-full flex items-center justify-center text-xs
+                      ${
+                        checked
+                          ? "bg-[#007aff] text-white"
+                          : "bg-white text-[#8e8e93] border border-[#d1d1d6]"
+                      }`}
+                  >
+                    ✓
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -315,6 +399,7 @@ export default function JourneyPage() {
               rows={q.type === "text_long" ? 5 : 3}
               value={textAnswer}
               onChange={(e) => setTextAnswer(e.target.value)}
+              placeholder="Type your thoughts here…"
               className="w-full rounded-3xl border border-[#e5e5ea] bg-[#f9f9fb]
                 px-4 py-3 text-[15px]
                 focus:bg-white focus:border-[#007aff]
@@ -340,6 +425,40 @@ export default function JourneyPage() {
     </div>
   );
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("soulsync.user");
+      localStorage.removeItem("ssai.signup.email");
+      localStorage.removeItem("ssai.login.email");
+    } catch {
+      // ignore
+    }
+    setMenuOpen(false);
+    window.location.href = "/";
+  };
+
+  const displayName = userName || userEmail || "Guest";
+  const initial =
+    (displayName && displayName.trim().charAt(0).toUpperCase()) || "U";
+
+  const handleGoToMatch = () => {
+    setMatchPromptOpen(false);
+    router.push("/soulsyncmatch");
+  };
+
+  // 🔍 show search icon if the user already answered AT LEAST 4 questions
+  // in total (from DB), regardless of current session
+  const canOpenMatchFromIcon = totalAnswers >= 4;
+
+  // While we haven't checked auth yet, show nothing / tiny loader
+  if (!authChecked) {
+    return (
+      <div className="p-10 text-center text-sm">
+        {safeTexts.loadingJourney}
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="p-10 text-center text-sm">
@@ -350,14 +469,13 @@ export default function JourneyPage() {
 
   return (
     <main
-    className="flex items-center justify-center px-4 bg-[#f2f2f7]"
-    style={{
-      height: "var(--app-height)",
-      paddingTop: "env(safe-area-inset-top)",
-      paddingBottom: "env(safe-area-inset-bottom)"
-    }}
-  >
-  
+      className="flex items-center justify-center px-4 bg-[#f2f2f7]"
+      style={{
+        height: "var(--app-height)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <div className="w-full max-w-[430px] h-full flex">
         <div
           className="
@@ -366,36 +484,88 @@ export default function JourneyPage() {
             bg-white
             border border-[#f1f1f4]
             shadow-[0_18px_40px_rgba(0,0,0,0.04)]
-            px-5 py-6 sm:px-6 sm:py-8
+            px-5 py-5 sm:px-6 sm:py-7
             overflow-hidden
           "
         >
-          {/* HEADER */}
-          <header className="flex flex-col items-center text-center">
-            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#f5f5f7]">
-              <Image
-                src="/logo-removebg-preview.png"
-                alt="SoulSync Logo"
-                width={56}
-                height={56}
-                priority
-              />
+          {/* TOP APP BAR: logo + title + burger + search */}
+          <header className="mb-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f5f5f7] shrink-0">
+                  <Image
+                    src="/logo-removebg-preview.png"
+                    alt="SoulSync Logo"
+                    width={40}
+                    height={40}
+                    priority
+                  />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[17px] sm:text-[18px] font-semibold text-[#3c3c43] leading-tight truncate">
+                    SoulSync AI
+                  </span>
+                  <span className="text-[12px] sm:text-[13px] text-[#8e8e93] leading-tight truncate">
+                    {safeTexts.subtitle}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {canOpenMatchFromIcon && (
+                  <button
+                    type="button"
+                    aria-label="Find a match"
+                    onClick={() => setMatchPromptOpen(true)}
+                    className="
+                      flex h-9 w-9 items-center justify-center
+                      rounded-full bg-[#f2f2f7]
+                      border border-[#e5e5ea]
+                      shadow-[0_4px_10px_rgba(0,0,0,0.06)]
+                      active:scale-[0.94]
+                      transition
+                    "
+                  >
+                    {/* Simple magnifying glass icon */}
+                    <span className="relative flex items-center justify-center">
+                      <span className="h-3.5 w-3.5 rounded-full border border-[#3c3c43]" />
+                      <span className="absolute h-2 w-[1.5px] bg-[#3c3c43] translate-x-[7px] translate-y-[6px] rotate-45 rounded-full" />
+                    </span>
+                  </button>
+                )}
+
+                {/* Burger / account button */}
+                <button
+                  type="button"
+                  aria-label="Account menu"
+                  onClick={() => setMenuOpen(true)}
+                  className="
+                    flex h-9 w-9 items-center justify-center
+                    rounded-full bg-[#f2f2f7]
+                    border border-[#e5e5ea]
+                    shadow-[0_4px_10px_rgba(0,0,0,0.06)]
+                    active:scale-[0.94]
+                    transition
+                  "
+                >
+                  <span className="flex flex-col gap-[3px]">
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                    <span className="h-[1.6px] w-4 rounded-full bg-[#3c3c43]" />
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#3c3c43] leading-tight">
-              SoulSync AI
-            </h1>
-            <p className="mt-1 text-[13px] sm:text-[14px] text-[#8e8e93] leading-tight">
-              {safeTexts.subtitle}
-            </p>
-
             {currentQuestion && (
-              <p className="mt-1 text-[11px] text-[#8e8e93]">∞</p>
+              <div className="mt-1 flex w-full justify-center">
+                <p className="text-[11px] text-[#8e8e93]">∞</p>
+              </div>
             )}
           </header>
 
           {/* QUESTION AREA */}
-          <section className="mt-4 flex-1 w-full overflow-y-auto pb-4 no-scrollbar">
+          <section className="mt-1 flex-1 w-full overflow-y-auto pb-4 no-scrollbar">
             {loadingQuestion && <Skeleton />}
 
             <AnimatePresence mode="wait">
@@ -412,34 +582,19 @@ export default function JourneyPage() {
                     {currentQuestion.text}
                   </h2>
 
+                  <div className="pt-1 space-y-3">
+                    {renderAnswerInput(currentQuestion)}
+                  </div>
+
+                  {/* Why we ask – small and below choices, translated like other UI texts */}
                   {currentQuestion.explanation && (
-                    <p className="text-[12px] sm:text-[13px] text-[#8e8e93]">
+                    <p className="pt-1 text-[11px] leading-snug text-[#8e8e93]">
                       <span className="font-medium">
-                        {(() => {
-                          const l = browserLang.toLowerCase();
-                          if (l.startsWith("fil"))
-                            return "Bakit namin tinatanong ito";
-                          if (l.startsWith("de"))
-                            return "Warum wir diese Frage stellen";
-                          if (l.startsWith("ru"))
-                            return "Почему мы задаём этот вопрос";
-                          if (l.startsWith("zh"))
-                            return "我们为什么问这个问题";
-                          if (l.startsWith("es"))
-                            return "Por qué hacemos esta pregunta";
-                          if (l.startsWith("fr"))
-                            return "Pourquoi posons-nous cette question";
-                          return "Why we ask this question";
-                        })()}
-                        :
+                        {safeTexts.whyWeAsk}:
                       </span>{" "}
                       {currentQuestion.explanation}
                     </p>
                   )}
-
-                  <div className="pt-1 space-y-3">
-                    {renderAnswerInput(currentQuestion)}
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -471,7 +626,7 @@ export default function JourneyPage() {
                 }
               `}
             >
-              {safeTexts.skip}
+              {getSecondaryButtonLabel(currentQuestion)}
             </button>
 
             <button
@@ -485,7 +640,7 @@ export default function JourneyPage() {
                 text-[15px] sm:text-[16px] font-semibold text-white
                 transition
                 hover:bg-[#2c2c2e]
-                active:bg-black active:scale-[0.97]
+                active:bg:black active:scale-[0.97]
                 shadow-[0_8px_20px_rgba(0,0,0,0.18)]
                 ${
                   !currentQuestion || loadingQuestion
@@ -499,6 +654,125 @@ export default function JourneyPage() {
           </div>
         </div>
       </div>
+
+      {/* ACCOUNT MODAL */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/25"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-[86%] max-w-[360px] rounded-[28px] bg-[#f9f9fb] border border-[#e5e5ea] shadow-[0_20px_50px_rgba(0,0,0,0.22)] p-5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[#e5e5ea] flex items-center justify-center text-[18px] font-semibold text-[#3c3c43]">
+                    {initial}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[15px] font-semibold text-[#1c1c1e]">
+                      {displayName}
+                    </span>
+                    {userEmail && (
+                      <span className="text-[12px] text-[#8e8e93]">
+                        {userEmail}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Close menu"
+                  className="h-7 w-7 flex items-center justify-center rounded-full bg-[#f2f2f7] text-[#3c3c43] text-sm border border-[#e5e5ea] active:scale-[0.94] transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="
+                    w-full rounded-2xl bg-[#ff3b30]/8 border border-[#ff3b30]/40
+                    py-3 text-[14px] font-semibold text-[#ff3b30]
+                    active:scale-[0.97] transition
+                    hover:bg-[#ff3b30]/10
+                  "
+                >
+                  {safeTexts.logout}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MATCH PROMPT MODAL */}
+      <AnimatePresence>
+        {matchPromptOpen && (
+          <motion.div
+            className="fixed inset-0 z-30 flex items-center justify-center bg:black/30 bg-black/30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ y: 28, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 28, opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="w-[86%] max-w-[360px] rounded-[28px] bg-[#f9f9fb] border border-[#e5e5ea] shadow-[0_22px_55px_rgba(0,0,0,0.25)] p-5"
+            >
+              <div className="flex flex-col gap-2">
+                <h2 className="text-[17px] font-semibold text-[#1c1c1e] leading-snug">
+                  {safeTexts.matchPromptTitle}
+                </h2>
+                <p className="text-[13px] text-[#6e6e73] leading-snug">
+                  {safeTexts.matchPromptSubtitle}
+                </p>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                <button
+                  type="button"
+                  onClick={handleGoToMatch}
+                  className="
+                    w-full rounded-2xl bg-[#1c1c1e] py-3
+                    text-[15px] font-semibold text-white
+                    shadow-[0_10px_24px_rgba(0,0,0,0.22)]
+                    active:scale-[0.97] transition
+                    hover:bg-[#2c2c2e]
+                  "
+                >
+                  {safeTexts.matchPromptFindMatch}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMatchPromptOpen(false)}
+                  className="
+                    w-full rounded-2xl border border-[#e5e5ea] bg-white py-3
+                    text-[14px] font-medium text-[#1c1c1e]
+                    active:scale-[0.97] transition
+                    hover:bg-[#f5f5f7]
+                  "
+                >
+                  {safeTexts.matchPromptContinue}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
