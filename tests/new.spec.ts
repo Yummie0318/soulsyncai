@@ -39,7 +39,7 @@ test.describe("Signup Page (/new)", () => {
 
   test("should show error for invalid email format", async ({ page }) => {
     await page.fill("#name", "Test User");
-    await page.fill("#email", "invalid-email"); // invalid
+    await page.fill("#email", "invalid-email"); // invalid on purpose
     await page.fill("#password", "password123");
 
     const signupButton = page.getByRole("button", { name: "Sign up" });
@@ -67,7 +67,7 @@ test.describe("Signup Page (/new)", () => {
     const signupButton = page.getByRole("button", { name: "Sign up" });
 
     await page.fill("#name", "Test User");
-    await page.fill("#email", "joylynmadriagats@gmail.com");
+    await page.fill("#email", "joylynmadriagats@gmail.com"); // ← your email here
     await page.fill("#password", "password123");
 
     await expect(signupButton).toBeEnabled();
