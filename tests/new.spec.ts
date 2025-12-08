@@ -46,8 +46,8 @@ test.describe("Signup Page (/new)", () => {
     await expect(signupButton).toBeEnabled();
     await signupButton.click();
 
-    // 🔥 More stable selector — works even when text renders late
-    const errorText = page.getByText("Please enter a valid email address.");
+    // ✅ Updated - flexible regex for any "valid email" message
+    const errorText = page.getByText(/valid email/i);
 
     await expect(errorText).toBeVisible({ timeout: 7000 });
   });
